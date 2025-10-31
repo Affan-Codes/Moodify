@@ -37,24 +37,34 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   /* Font families */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
   --font-inter: var(--font-inter);
 
+  /* Breakpoints */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* Screen-based max-widths */
+  --width-screen-sm: var(--breakpoint-sm);
+  --width-screen-md: var(--breakpoint-md);
+  --width-screen-lg: var(--breakpoint-lg);
+  --width-screen-xl: var(--breakpoint-xl);
+  --width-screen-2xl: var(--breakpoint-2xl);
+
   /* Animations */
-  --animate-ripple: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s) infinite;
+  --animate-ripple: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s)
+    infinite;
   --animate-float: float 6s ease-in-out infinite;
   --animate-wave: wave 2s ease-in-out infinite;
   --animate-scroll: scroll 2s ease-in-out infinite;
   --animate-pulse-gentle: pulse-gentle 2s ease-in-out infinite;
   --animate-gradient: gradient 15s ease infinite;
-  @keyframes ripple {
-  0%, 100% {
-    transform: translate(-50%, -50%) scale(1);
-    }
-  50% {
-    transform: translate(-50%, -50%) scale(0.9);
-    }
-  }
 }
 
 :root {
@@ -67,8 +77,8 @@
   --popover-foreground: oklch(0.24 0.015 200);
 
   /* Soft sage green as primary */
-  --primary: oklch(0.70 0.08 150);
-  --primary-foreground: oklch(0.20 0.10 150);
+  --primary: oklch(0.7 0.08 150);
+  --primary-foreground: oklch(0.2 0.1 150);
 
   /* Gentle lavender as secondary */
   --secondary: oklch(0.96 0.015 250);
@@ -76,7 +86,7 @@
 
   /* Muted tones */
   --muted: oklch(0.96 0.008 210);
-  --muted-foreground: oklch(0.50 0.020 215);
+  --muted-foreground: oklch(0.5 0.02 215);
 
   /* Soft accent */
   --accent: oklch(0.95 0.012 180);
@@ -84,15 +94,15 @@
 
   --destructive: oklch(0.65 0.22 25);
   --destructive-foreground: oklch(0.98 0.008 210);
-  --border: oklch(0.90 0.005 200);
-  --input: oklch(0.90 0.005 200);
-  --ring: oklch(0.70 0.08 150);
+  --border: oklch(0.9 0.005 200);
+  --input: oklch(0.9 0.005 200);
+  --ring: oklch(0.7 0.08 150);
 
   /* Chart colors */
   --chart-1: oklch(0.65 0.15 280);
-  --chart-2: oklch(0.70 0.12 150);
-  --chart-3: oklch(0.60 0.18 200);
-  --chart-4: oklch(0.75 0.10 50);
+  --chart-2: oklch(0.7 0.12 150);
+  --chart-3: oklch(0.6 0.18 200);
+  --chart-4: oklch(0.75 0.1 50);
   --chart-5: oklch(0.68 0.16 320);
 
   --radius: 0.75rem;
@@ -109,31 +119,31 @@
 
   /* Soft sage in dark mode */
   --primary: oklch(0.75 0.09 150);
-  --primary-foreground: oklch(0.20 0.10 150);
+  --primary-foreground: oklch(0.2 0.1 150);
 
   /* Gentle purple in dark mode */
   --secondary: oklch(0.25 0.015 250);
   --secondary-foreground: oklch(0.98 0.008 210);
 
   /* Muted dark tones */
-  --muted: oklch(0.20 0.015 200);
+  --muted: oklch(0.2 0.015 200);
   --muted-foreground: oklch(0.75 0.015 210);
 
   /* Soft dark accent */
-  --accent: oklch(0.20 0.015 200);
+  --accent: oklch(0.2 0.015 200);
   --accent-foreground: oklch(0.98 0.008 210);
 
-  --destructive: oklch(0.40 0.15 25);
+  --destructive: oklch(0.4 0.15 25);
   --destructive-foreground: oklch(0.98 0.008 210);
-  --border: oklch(0.20 0.015 200);
-  --input: oklch(0.20 0.015 200);
+  --border: oklch(0.2 0.015 200);
+  --input: oklch(0.2 0.015 200);
   --ring: oklch(0.75 0.09 150);
 
   /* Chart colors - darker variants */
-  --chart-1: oklch(0.60 0.18 280);
+  --chart-1: oklch(0.6 0.18 280);
   --chart-2: oklch(0.65 0.15 150);
-  --chart-3: oklch(0.55 0.20 200);
-  --chart-4: oklch(0.70 0.12 50);
+  --chart-3: oklch(0.55 0.2 200);
+  --chart-4: oklch(0.7 0.12 50);
   --chart-5: oklch(0.63 0.18 320);
 }
 
@@ -145,11 +155,18 @@
   body {
     @apply bg-background text-foreground transition-colors duration-200;
   }
+
+  /* Remove border from elements that shouldn't have it */
+  button:not([class*="border"]),
+  [role="button"]:not([class*="border"]) {
+    border-color: transparent;
+  }
 }
 
 /* Keyframe animations */
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -158,7 +175,8 @@
 }
 
 @keyframes wave {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(-5deg);
   }
   50% {
@@ -167,7 +185,8 @@
 }
 
 @keyframes scroll {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -188,7 +207,8 @@
 }
 
 @keyframes pulse-gentle {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -197,7 +217,8 @@
 }
 
 @keyframes ripple {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(-50%, -50%) scale(1);
   }
   50% {
@@ -255,14 +276,5 @@
 
   .gentle-shadow:hover {
     box-shadow: 0 8px 30px -2px rgba(0, 0, 0, 0.15);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
 }
