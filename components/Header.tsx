@@ -5,6 +5,7 @@ import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
 import { useState } from "react";
 import { Button } from "./ui/button";
+import SignInButton from "./auth/SignInButton";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -51,6 +52,8 @@ const Header = () => {
 
             <div className="flex items-center gap-3">
               <ThemeToggle />
+
+              <SignInButton />
 
               <Button
                 variant={"ghost"}
