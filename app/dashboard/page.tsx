@@ -33,11 +33,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import AnxietyGames from "@/components/games/AnxietyGames";
+import MoodForm from "@/components/mood/MoodForm";
+import ActivityLogger from "@/components/activities/ActivityLogger";
 
 const DashboardPage = () => {
   const [mounted, setMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showMoodModal, setShowMoodModal] = useState(false);
+  const [isSavingMood, setIsSavingMood] = useState(false);
 
   const wellnessStats = [
     {
@@ -73,6 +76,17 @@ const DashboardPage = () => {
       description: "Planned for today",
     },
   ];
+
+  const handleMoodSubmit = async (data: { moodScore: number }) => {
+    setIsSavingMood(true);
+    try {
+      setShowMoodModal(false);
+    } catch (error) {
+      console.error("Error saving mood:", error);
+    } finally {
+      setIsSavingMood(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -175,7 +189,9 @@ const DashboardPage = () => {
                           "justify-center items-center text-center",
                           "transition-all duration-200 group-hover:-translate-y-0.5"
                         )}
-                        onClick={() => {}}
+                        onClick={() => {
+                          setShowMoodModal(true);
+                        }}
                       >
                         <div className="size-10 rounded-full bg-rose-500/10 flex items-center justify-center mb-2">
                           <Heart className="size-5 text-rose-500" />
@@ -302,9 +318,11 @@ const DashboardPage = () => {
               Move the slider to track your current mood
             </DialogDescription>
           </DialogHeader>
-          {/* <MoodForm onSuccess={() => setShowMoodModal(false)} /> */}
+          <MoodForm onSuccess={handleMoodSubmit} isLoading={isSavingMood} />
         </DialogContent>
       </Dialog>
+
+      <ActivityLogger />
     </div>
   );
 };
