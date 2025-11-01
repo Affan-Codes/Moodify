@@ -8,7 +8,7 @@ export interface ISession extends Document {
   lastActive: Date;
 }
 
-const SessionSchema = new Schema<ISession>(
+const sessionSchema = new Schema<ISession>(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -36,6 +36,6 @@ const SessionSchema = new Schema<ISession>(
 );
 
 // Index for automatic cleanup of expired sessions
-SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-export const Session = mongoose.model<ISession>("Session", SessionSchema);
+export const Session = mongoose.model<ISession>("Session", sessionSchema);

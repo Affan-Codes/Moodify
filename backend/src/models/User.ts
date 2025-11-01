@@ -6,7 +6,7 @@ export interface IUser extends Document {
   password: string;
 }
 
-const UserSchema = new Schema<IUser>(
+const userSchema = new Schema<IUser>(
   {
     name: {
       type: String,
@@ -25,4 +25,4 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-export const User = mongoose.model<IUser>("User", UserSchema);
+export const User = mongoose.model<IUser>("User", userSchema);
