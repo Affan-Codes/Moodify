@@ -293,7 +293,7 @@ const TherapyPage = () => {
                   }
                   className={cn(
                     "w-full resize-none rounded-2xl border bg-background",
-                    "p-3 pr-12 min-h-[48px] max-h-[200px]",
+                    "p-3 pr-12 min-h-12 max-h-[200px]",
                     "focus:outline-none focus:ring-2 focus:ring-primary/50",
                     "transition-all duration-200",
                     "placeholder:text-muted-foreground/70",
@@ -313,7 +313,7 @@ const TherapyPage = () => {
                   type="submit"
                   size="icon"
                   className={cn(
-                    "absolute right-1.5 bottom-3.5 h-[36px] w-[36px]",
+                    "absolute right-1.5 bottom-3.5 size-9",
                     "rounded-xl transition-all duration-200",
                     "bg-primary hover:bg-primary/90",
                     "shadow-sm shadow-primary/20",
