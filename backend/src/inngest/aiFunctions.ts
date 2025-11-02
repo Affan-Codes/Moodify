@@ -1,5 +1,3 @@
-import "dotenv/config";
-
 import { inngest } from "./client";
 import { logger } from "../utils/logger";
 import { genAI } from "../utils/ai";

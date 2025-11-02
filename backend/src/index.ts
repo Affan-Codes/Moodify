@@ -1,7 +1,6 @@
-import dotenv from "dotenv";
-
-// Load environment variables
-dotenv.config();
+// Validate environment variables before anything else
+import { validateEnv } from "./utils/env";
+validateEnv();
 
 import express from "express";
 import cors from "cors";
@@ -21,14 +20,45 @@ import { errorHandler } from "./middleware/errorHandler";
 // Create Express app
 const app = express();
 
+// SECURE CORS CONFIGURATION
+const corsOptions = {
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) => {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // In development, allow localhost
+    if (process.env.NODE_ENV !== "production") {
+      if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+        return callback(null, true);
+      }
+    }
+
+    // In production, only allow specific domains
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      logger.warn(`CORS blocked request from origin: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true, // Allow cookies and authorization headers
+  optionsSuccessStatus: 200,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
 // Middlewares
 app.use(helmet()); // Security headers
-app.use(cors()); // Enable CORS
+app.use(cors(corsOptions)); // Enable CORS
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan("dev")); // HTTP request logger
-
-// Error handling middleware
-app.use(errorHandler);
 
 // Set up Inngest endpoint
 app.use(
@@ -44,6 +74,9 @@ app.use("/api/auth", authRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/mood", moodRouter);
 app.use("/api/activity", activityRouter);
+
+// Error handling middleware
+app.use(errorHandler);
 
 const startServer = async () => {
   try {

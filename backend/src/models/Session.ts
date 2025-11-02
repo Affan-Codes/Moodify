@@ -37,7 +37,13 @@ const sessionSchema = new Schema<ISession>(
   { timestamps: true }
 );
 
-// Index for automatic cleanup of expired sessions
+// Index for automatic cleanup of expired sessions (TTL index)
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// Compound index for the auth query (token + expiresAt)
+sessionSchema.index({ token: 1, expiresAt: 1 });
+
+// Index for querying user's sessions
+sessionSchema.index({ userId: 1 });
 
 export const Session = mongoose.model<ISession>("Session", sessionSchema);

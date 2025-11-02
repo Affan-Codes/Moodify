@@ -181,7 +181,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     // Return the response
     res.json({
-      response,
+      response, // TODO
       message: response,
       analysis,
       metadata: {
