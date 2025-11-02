@@ -1,12 +1,22 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IActivity extends Document {
   userId: mongoose.Types.ObjectId;
-  type: string;
+  type:
+    | "meditation"
+    | "exercise"
+    | "walking"
+    | "reading"
+    | "journaling"
+    | "therapy";
   name: string;
   description?: string;
   duration?: number;
+  difficulty: "easy" | "medium" | "hard";
+  feedback?: string;
   timestamp: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const activitySchema = new Schema<IActivity>(
@@ -15,7 +25,6 @@ const activitySchema = new Schema<IActivity>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     type: {
       type: String,
@@ -32,13 +41,27 @@ const activitySchema = new Schema<IActivity>(
     name: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: 100,
     },
     description: {
       type: String,
+      trim: true,
+      maxlength: 500,
     },
     duration: {
       type: Number,
-      min: 0,
+      min: [0, "Duration cannot be negative"],
+    },
+    difficulty: {
+      type: String,
+      required: true,
+      enum: ["easy", "medium", "hard"],
+    },
+    feedback: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
     },
     timestamp: {
       type: Date,

@@ -1,9 +1,16 @@
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import dotenv from "dotenv";
 import authRouter from "./routes/auth";
+import chatRouter from "./routes/chat";
+import moodRouter from "./routes/mood";
+import activityRouter from "./routes/activity";
 import { serve } from "inngest/express";
 import { inngest } from "./inngest/client";
 import { functions as inngestFunctions } from "./inngest/functions";
@@ -11,9 +18,7 @@ import { logger } from "./utils/logger";
 import { connectDB } from "./utils/db";
 import { errorHandler } from "./middleware/errorHandler";
 
-// Load environment variables
-dotenv.config();
-
+// Create Express app
 const app = express();
 
 // Middlewares
@@ -36,6 +41,9 @@ app.get("/health", (_, res) => {
   res.json({ status: "ok", message: "Server is running" });
 });
 app.use("/api/auth", authRouter);
+app.use("/api/chat", chatRouter);
+app.use("/api/mood", moodRouter);
+app.use("/api/activity", activityRouter);
 
 const startServer = async () => {
   try {
@@ -43,7 +51,7 @@ const startServer = async () => {
     await connectDB();
 
     // Then start the server
-    const PORT = process.env.PORT || 3000;
+    const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT}`);
       logger.info(

@@ -3,6 +3,35 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User";
 import { Session } from "../models/Session";
+import mongoose from "mongoose";
+
+// Helper function to generate JWT
+const generateToken = (userId: string): string => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is not defined");
+  }
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "24h" });
+};
+
+// Helper function to create session
+const createSession = async (
+  userId: string,
+  token: string,
+  deviceInfo?: string
+) => {
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
+
+  const session = new Session({
+    userId,
+    token,
+    expiresAt,
+    deviceInfo,
+  });
+
+  await session.save();
+  return session;
+};
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -13,42 +42,47 @@ export const register = async (req: Request, res: Response) => {
         .json({ message: "Name, email, and password are required." });
     }
 
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long.",
+      });
+    }
+
     // Check if user exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(409).json({ message: "Email already in use." });
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
-    const user = new User({ name, email, password: hashedPassword });
+    const user = new User({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      password: hashedPassword,
+    });
 
     await user.save();
 
     // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user._id,
-      },
-      process.env.JWT_SECRET!,
-      {
-        expiresIn: "24h",
-      }
+    const token = generateToken(
+      (user._id as mongoose.Types.ObjectId).toString()
     );
 
     // Create session
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
 
-    const session = new Session({
-      userId: user._id,
+    // Create session
+    await createSession(
+      (user._id as mongoose.Types.ObjectId).toString(),
       token,
-      expiresAt,
-      deviceInfo: req.headers["user-agent"],
-    });
-    await session.save();
+      req.headers["user-agent"]
+    );
 
     // Respond with user data and token
     res.json({
@@ -89,27 +123,16 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user._id,
-      },
-      process.env.JWT_SECRET!,
-      {
-        expiresIn: "24h",
-      }
+    const token = generateToken(
+      (user._id as mongoose.Types.ObjectId).toString()
     );
 
     // Create session
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
-
-    const session = new Session({
-      userId: user._id,
+    await createSession(
+      (user._id as mongoose.Types.ObjectId).toString(),
       token,
-      expiresAt,
-      deviceInfo: req.headers["user-agent"],
-    });
-    await session.save();
+      req.headers["user-agent"]
+    );
 
     // Respond with user data and token
     res.json({
@@ -129,9 +152,23 @@ export const login = async (req: Request, res: Response) => {
 export const logout = async (req: Request, res: Response) => {
   try {
     const token = req.header("Authorization")?.replace("Bearer ", "");
-    if (token) {
-      await Session.deleteOne({ token });
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "No token provided",
+      });
     }
+
+    // Delete session
+    const result = await Session.deleteOne({ token });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found",
+      });
+    }
+
     res.json({ message: "Logged out successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
