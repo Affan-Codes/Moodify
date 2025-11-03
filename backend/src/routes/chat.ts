@@ -4,6 +4,7 @@ import {
   createChatSession,
   getChatHistory,
   getChatSession,
+  getMessageStatus,
   sendMessage,
 } from "../controllers/chatController";
 
@@ -20,6 +21,12 @@ router.get("/sessions/:sessionId", getChatSession);
 
 // Send a message in a chat session
 router.post("/sessions/:sessionId/messages", sendMessage);
+
+// Get message status (for polling)
+router.get(
+  "/sessions/:sessionId/messages/:messageIndex/status",
+  getMessageStatus
+);
 
 // Get chat history for a session
 router.get("/sessions/:sessionId/history", getChatHistory);

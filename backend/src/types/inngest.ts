@@ -36,6 +36,7 @@ export interface TherapyAgentMemory {
 }
 
 export interface InngestEventData {
+  messageIndex?: number;
   message?: string;
   history?: any[];
   memory?: TherapyAgentMemory;

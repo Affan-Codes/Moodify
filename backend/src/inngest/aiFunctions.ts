@@ -2,39 +2,52 @@ import { inngest } from "./client";
 import { logger } from "../utils/logger";
 import { genAI } from "../utils/ai";
 import { extractJSON } from "../utils/helper";
+import { ChatSession } from "../models/ChatSession";
 
 // Function to handle chat message processing
 export const processChatMessage = inngest.createFunction(
   {
     id: "process-chat-message",
+    retries: 3,
   },
   { event: "therapy/session.message" },
   async ({ event, step }) => {
-    try {
-      const {
-        message,
-        history,
-        memory = {
-          userProfile: {
-            emotionalState: [],
-            riskLevel: 0,
-            preferences: {},
-          },
-          sessionContext: {
-            conversationThemes: [],
-            currentTechnique: null,
-          },
+    const {
+      sessionId,
+      messageIndex,
+      message,
+      history,
+      memory = {
+        userProfile: {
+          emotionalState: [],
+          riskLevel: 0,
+          preferences: {},
         },
-        goals = [],
-        systemPrompt,
-      } = event.data;
+        sessionContext: {
+          conversationThemes: [],
+          currentTechnique: null,
+        },
+      },
+      goals = [],
+      systemPrompt,
+    } = event.data;
 
-      logger.info("Processing chat message:", {
-        message,
+    try {
+      logger.info("Processing chat message in Inngest:", {
+        sessionId,
+        messageIndex,
         historyLength: history?.length,
       });
 
-      // Analyze the message using Gemini
+      // Update status to "processing"
+      await step.run("update-status-processing", async () => {
+        await ChatSession.findOneAndUpdate(
+          { sessionId },
+          { $set: { [`messages.${messageIndex}.status`]: "processing" } }
+        );
+      });
+
+      // Analyze the message
       const analysis = await step.run("analyze-message", async () => {
         try {
           const model = genAI.getGenerativeModel({
@@ -58,12 +71,7 @@ export const processChatMessage = inngest.createFunction(
           const response = result.response;
           const text = response.text().trim();
 
-          logger.info("Raw Gemini response:", { text });
-
-          // Clean and extract JSON
           const cleanText = extractJSON(text);
-          logger.info("Cleaned JSON:", { cleanText });
-
           const parsedAnalysis = JSON.parse(cleanText);
 
           logger.info("Successfully parsed analysis:", parsedAnalysis);
@@ -71,7 +79,6 @@ export const processChatMessage = inngest.createFunction(
           return parsedAnalysis;
         } catch (error) {
           logger.error("Error in message analysis:", { error, message });
-          // Return a default analysis instead of throwing
           return {
             emotionalState: "neutral",
             themes: [],
@@ -82,7 +89,7 @@ export const processChatMessage = inngest.createFunction(
         }
       });
 
-      // Update memory based on analysis
+      // Update memory
       const updatedMemory = await step.run("update-memory", async () => {
         if (analysis.emotionalState) {
           memory.userProfile.emotionalState.push(analysis.emotionalState);
@@ -96,17 +103,18 @@ export const processChatMessage = inngest.createFunction(
         return memory;
       });
 
-      // If high risk is detected, trigger an alert
+      // Alert if high risk
       if (analysis.riskLevel > 4) {
         await step.run("trigger-risk-alert", async () => {
           logger.warn("High risk level detected in chat message", {
+            sessionId,
             message,
             riskLevel: analysis.riskLevel,
           });
         });
       }
 
-      // Generate therapeutic response
+      // Generate response
       const response = await step.run("generate-response", async () => {
         try {
           const model = genAI.getGenerativeModel({
@@ -135,12 +143,35 @@ export const processChatMessage = inngest.createFunction(
           return responseText;
         } catch (error) {
           logger.error("Error generating response:", { error, message });
-          // Return a default response instead of throwing
           return "I'm here to support you. Could you tell me more about what's on your mind?";
         }
       });
 
-      // Return the response in the expected format
+      // Update message in database with completed status
+      await step.run("update-message-completed", async () => {
+        await ChatSession.findOneAndUpdate(
+          { sessionId },
+          {
+            $set: {
+              [`messages.${messageIndex}.content`]: response,
+              [`messages.${messageIndex}.status`]: "completed",
+              [`messages.${messageIndex}.metadata`]: {
+                analysis,
+                progress: {
+                  emotionalState: analysis.emotionalState,
+                  riskLevel: analysis.riskLevel,
+                },
+              },
+            },
+          }
+        );
+
+        logger.info("Message updated successfully:", {
+          sessionId,
+          messageIndex,
+        });
+      });
+
       return {
         response,
         analysis,
@@ -149,21 +180,25 @@ export const processChatMessage = inngest.createFunction(
     } catch (error) {
       logger.error("Error in chat message processing:", {
         error,
-        message: event.data.message,
+        sessionId,
+        messageIndex,
       });
-      // Return a default response instead of throwing
-      return {
-        response:
-          "I'm here to support you. Could you tell me more about what's on your mind?",
-        analysis: {
-          emotionalState: "neutral",
-          themes: [],
-          riskLevel: 0,
-          recommendedApproach: "supportive",
-          progressIndicators: [],
-        },
-        updatedMemory: event.data.memory,
-      };
+
+      // Update status to "failed"
+      await ChatSession.findOneAndUpdate(
+        { sessionId },
+        {
+          $set: {
+            [`messages.${messageIndex}.status`]: "failed",
+            [`messages.${messageIndex}.content`]:
+              "I apologize, but I encountered an error processing your message. Please try again.",
+            [`messages.${messageIndex}.metadata.error`]:
+              error instanceof Error ? error.message : "Unknown error",
+          },
+        }
+      );
+
+      throw error; // Inngest will retry
     }
   }
 );

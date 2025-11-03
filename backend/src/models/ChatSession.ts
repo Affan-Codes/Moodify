@@ -4,6 +4,7 @@ export interface IChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  status?: "pending" | "processing" | "completed" | "failed";
   metadata?: {
     analysis?: any;
     currentGoal?: string | null;
@@ -11,6 +12,7 @@ export interface IChatMessage {
       emotionalState?: string;
       riskLevel?: number;
     };
+    error?: string;
   };
 }
 
@@ -40,6 +42,11 @@ const chatMessageSchema = new Schema<IChatMessage>(
       required: true,
       default: Date.now,
     },
+    status: {
+      type: String,
+      enum: ["pending", "processing", "completed", "failed"],
+      default: "completed",
+    },
     metadata: {
       type: {
         analysis: Schema.Types.Mixed,
@@ -48,6 +55,7 @@ const chatMessageSchema = new Schema<IChatMessage>(
           emotionalState: String,
           riskLevel: Number,
         },
+        error: String,
       },
       required: false,
     },
@@ -82,6 +90,10 @@ const chatSessionSchema = new Schema<IChatSession>(
   },
   { timestamps: true }
 );
+
+chatSessionSchema.index({ sessionId: 1 });
+chatSessionSchema.index({ userId: 1, status: 1 });
+chatSessionSchema.index({ userId: 1, startTime: -1 });
 
 export const ChatSession = model<IChatSession>(
   "ChatSession",

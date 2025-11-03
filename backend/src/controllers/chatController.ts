@@ -6,8 +6,6 @@ import { v4 as uuidv4 } from "uuid";
 import { logger } from "../utils/logger";
 import { InngestEvent } from "../types/inngest";
 import { inngest } from "../inngest/client";
-import { genAI } from "../utils/ai";
-import { extractJSON } from "../utils/helper";
 
 // Create a new chat session
 export const createChatSession = async (req: Request, res: Response) => {
@@ -59,7 +57,23 @@ export const sendMessage = async (req: Request, res: Response) => {
     const { message } = req.body;
     const userId = req.user._id as Types.ObjectId;
 
+    // Validate sessionId exists
+    if (!sessionId) {
+      return res.status(400).json({ message: "Session ID is required" });
+    }
+
     logger.info("Processing message:", { sessionId, message });
+
+    // Validate input
+    if (!message || message.trim().length === 0) {
+      return res.status(400).json({ message: "Message cannot be empty" });
+    }
+
+    if (message.length > 5000) {
+      return res
+        .status(400)
+        .json({ message: "Message too long (max 5000 characters)" });
+    }
 
     // Find session by sessionId
     const session = await ChatSession.findOne({ sessionId });
@@ -73,12 +87,34 @@ export const sendMessage = async (req: Request, res: Response) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    // Create Inngest event for message processing
+    // Add user message immediately
+    session.messages.push({
+      role: "user",
+      content: message,
+      timestamp: new Date(),
+      status: "completed",
+    });
+
+    // Add placeholder for assistant response
+    session.messages.push({
+      role: "assistant",
+      content: "", // Empty initially
+      timestamp: new Date(),
+      status: "pending",
+    });
+
+    await session.save();
+
+    const messageIndex = session.messages.length - 1; // Index of assistant message
+
+    // Send to Inngest for async processing
     const event: InngestEvent = {
       name: "therapy/session.message",
       data: {
+        sessionId,
+        messageIndex,
         message,
-        history: session.messages,
+        history: session.messages.slice(0, -1), // All messages except the pending one
         memory: {
           userProfile: {
             emotionalState: [],
@@ -100,96 +136,20 @@ export const sendMessage = async (req: Request, res: Response) => {
       },
     };
 
-    logger.info("Sending message to Inngest:", { event });
+    logger.info("Sending message to Inngest for processing:", {
+      sessionId,
+      messageIndex,
+    });
 
-    // Send event to Inngest for logging and analytics
+    // Send to Inngest (fire and forget)
     await inngest.send(event);
 
-    // Process the message directly using Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-
-    // Analyze the message
-    const analysisPrompt = `Analyze this therapy message and provide insights. Return ONLY a valid JSON object with no markdown formatting or additional text.
-    Message: ${message}
-    Context: ${JSON.stringify({
-      memory: event.data.memory,
-      goals: event.data.goals,
-    })}
-    
-    Required JSON structure:
-    {
-      "emotionalState": "string",
-      "themes": ["string"],
-      "riskLevel": number,
-      "recommendedApproach": "string",
-      "progressIndicators": ["string"]
-    }`;
-
-    const analysisResult = await model.generateContent(analysisPrompt);
-    const analysisText = analysisResult.response.text().trim();
-
-    const cleanAnalysisText = extractJSON(analysisText);
-
-    const analysis = JSON.parse(cleanAnalysisText);
-
-    logger.info("Message analysis:", analysis);
-
-    // Generate therapeutic response
-    const responsePrompt = `${event.data.systemPrompt}
-    
-    Based on the following context, generate a therapeutic response:
-    Message: ${message}
-    Analysis: ${JSON.stringify(analysis)}
-    Memory: ${JSON.stringify(event.data.memory)}
-    Goals: ${JSON.stringify(event.data.goals)}
-    
-    Provide a response that:
-    1. Addresses the immediate emotional needs
-    2. Uses appropriate therapeutic techniques
-    3. Shows empathy and understanding
-    4. Maintains professional boundaries
-    5. Considers safety and well-being`;
-
-    const responseResult = await model.generateContent(responsePrompt);
-    const response = responseResult.response.text().trim();
-
-    logger.info("Generated response:", response);
-
-    // Add message to session history
-    session.messages.push({
-      role: "user",
-      content: message,
-      timestamp: new Date(),
-    });
-
-    session.messages.push({
-      role: "assistant",
-      content: response,
-      timestamp: new Date(),
-      metadata: {
-        analysis,
-        progress: {
-          emotionalState: analysis.emotionalState,
-          riskLevel: analysis.riskLevel,
-        },
-      },
-    });
-
-    // Save the updated session
-    await session.save();
-    logger.info("Session updated successfully:", { sessionId });
-
-    // Return the response
+    // Return immediately - don't wait for AI processing
     res.json({
-      response, // TODO
-      message: response,
-      analysis,
-      metadata: {
-        progress: {
-          emotionalState: analysis.emotionalState,
-          riskLevel: analysis.riskLevel,
-        },
-      },
+      message: "Message received and processing",
+      sessionId,
+      messageIndex,
+      status: "pending",
     });
   } catch (error) {
     logger.error("Error in sendMessage:", error);
@@ -197,6 +157,52 @@ export const sendMessage = async (req: Request, res: Response) => {
       message: "Error processing message",
       error: error instanceof Error ? error.message : "Unknown error",
     });
+  }
+};
+
+// Poll for message status
+export const getMessageStatus = async (req: Request, res: Response) => {
+  try {
+    const { sessionId, messageIndex } = req.params;
+    const userId = req.user._id as Types.ObjectId;
+
+    // Validate messageIndex exists
+    if (!messageIndex) {
+      return res.status(400).json({ message: "Message index is required" });
+    }
+
+    const session = await ChatSession.findOne({ sessionId });
+
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    if (session.userId.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const index = parseInt(messageIndex);
+
+    // Validate it's a valid number
+    if (isNaN(index)) {
+      return res.status(400).json({ message: "Invalid message index" });
+    }
+
+    const message = session.messages[index];
+
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    res.json({
+      status: message.status,
+      content: message.content,
+      metadata: message.metadata,
+      timestamp: message.timestamp,
+    });
+  } catch (error) {
+    logger.error("Error getting message status:", error);
+    res.status(500).json({ message: "Error getting message status" });
   }
 };
 
