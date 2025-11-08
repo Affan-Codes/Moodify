@@ -7,6 +7,13 @@ import {
   getMessageStatus,
   sendMessage,
 } from "../controllers/chatController";
+import {
+  createSessionSchema,
+  getChatHistorySchema,
+  getMessageStatusSchema,
+  sendMessageSchema,
+} from "../validators/chat.validator";
+import { validate } from "../middleware/validate";
 
 const router = express.Router();
 
@@ -14,21 +21,30 @@ const router = express.Router();
 router.use(auth);
 
 // Create a new chat session
-router.post("/sessions", createChatSession);
+router.post("/sessions", validate(createSessionSchema), createChatSession);
 
 // Get a specific chat session
 router.get("/sessions/:sessionId", getChatSession);
 
 // Send a message in a chat session
-router.post("/sessions/:sessionId/messages", sendMessage);
+router.post(
+  "/sessions/:sessionId/messages",
+  validate(sendMessageSchema),
+  sendMessage
+);
 
 // Get message status (for polling)
 router.get(
   "/sessions/:sessionId/messages/:messageIndex/status",
+  validate(getMessageStatusSchema),
   getMessageStatus
 );
 
 // Get chat history for a session
-router.get("/sessions/:sessionId/history", getChatHistory);
+router.get(
+  "/sessions/:sessionId/history",
+  validate(getChatHistorySchema),
+  getChatHistory
+);
 
 export default router;

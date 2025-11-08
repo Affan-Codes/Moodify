@@ -64,17 +64,6 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     logger.info("Processing message:", { sessionId, message });
 
-    // Validate input
-    if (!message || message.trim().length === 0) {
-      return res.status(400).json({ message: "Message cannot be empty" });
-    }
-
-    if (message.length > 5000) {
-      return res
-        .status(400)
-        .json({ message: "Message too long (max 5000 characters)" });
-    }
-
     // Find session by sessionId
     const session = await ChatSession.findOne({ sessionId });
     if (!session) {
