@@ -3,6 +3,7 @@ import { createMood } from "../controllers/moodController";
 import { auth } from "../middleware/auth";
 import { createMoodSchema } from "../validators/mood.validator";
 import { validate } from "../middleware/validate";
+import { dataEntryLimiter } from "../middleware/rateLimiter";
 
 const router = express.Router();
 
@@ -10,6 +11,6 @@ const router = express.Router();
 router.use(auth);
 
 // Track a new mood entry
-router.post("/", validate(createMoodSchema), createMood);
+router.post("/", dataEntryLimiter, validate(createMoodSchema), createMood);
 
 export default router;

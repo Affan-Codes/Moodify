@@ -16,6 +16,7 @@ import { functions as inngestFunctions } from "./inngest/functions";
 import { logger } from "./utils/logger";
 import { connectDB } from "./utils/db";
 import { errorHandler } from "./middleware/errorHandler";
+import { apiLimiter } from "./middleware/rateLimiter";
 
 // Create Express app
 const app = express();
@@ -59,6 +60,8 @@ app.use(helmet()); // Security headers
 app.use(cors(corsOptions)); // Enable CORS
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan("dev")); // HTTP request logger
+
+app.use("/api", apiLimiter); // Apply rate limiting to all /api routes
 
 // Set up Inngest endpoint
 app.use(

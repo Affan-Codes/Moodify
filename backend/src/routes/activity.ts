@@ -3,6 +3,7 @@ import { auth } from "../middleware/auth";
 import { logActivity } from "../controllers/activityController";
 import { logActivitySchema } from "../validators/activity.validator";
 import { validate } from "../middleware/validate";
+import { dataEntryLimiter } from "../middleware/rateLimiter";
 
 const router = express.Router();
 
@@ -10,6 +11,6 @@ const router = express.Router();
 router.use(auth);
 
 // Log a new activity
-router.post("/", validate(logActivitySchema), logActivity);
+router.post("/", dataEntryLimiter, validate(logActivitySchema), logActivity);
 
 export default router;
