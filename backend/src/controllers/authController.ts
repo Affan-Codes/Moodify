@@ -79,7 +79,7 @@ export const register = async (req: Request, res: Response) => {
         email: user.email,
       },
       token,
-      message: "Login successful",
+      message: "Sign Up successful",
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });

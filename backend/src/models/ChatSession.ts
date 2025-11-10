@@ -91,7 +91,6 @@ const chatSessionSchema = new Schema<IChatSession>(
   { timestamps: true }
 );
 
-chatSessionSchema.index({ sessionId: 1 });
 chatSessionSchema.index({ userId: 1, status: 1 });
 chatSessionSchema.index({ userId: 1, startTime: -1 });
 

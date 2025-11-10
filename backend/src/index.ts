@@ -17,6 +17,8 @@ import { logger } from "./utils/logger";
 import { connectDB } from "./utils/db";
 import { errorHandler } from "./middleware/errorHandler";
 import { apiLimiter } from "./middleware/rateLimiter";
+import { Server } from "http";
+import mongoose from "mongoose";
 
 // Create Express app
 const app = express();
@@ -81,6 +83,9 @@ app.use("/api/activity", activityRouter);
 // Error handling middleware
 app.use(errorHandler);
 
+// Store server instance for graceful shutdown
+let server: Server;
+
 const startServer = async () => {
   try {
     // Connect to MongoDB first
@@ -88,7 +93,7 @@ const startServer = async () => {
 
     // Then start the server
     const PORT = process.env.PORT || 3001;
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT}`);
       logger.info(
         `Inngest endpoint available at http://localhost:${PORT}/api/inngest`
@@ -99,5 +104,56 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+// Graceful shutdown handler
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`${signal} signal received: closing HTTP server gracefully`);
+
+  // Stop accepting new connections
+  if (server) {
+    server.close(async () => {
+      logger.info("HTTP server closed");
+
+      try {
+        // Close database connection
+        await mongoose.connection.close();
+        logger.info("MongoDB connection closed");
+
+        // Exit cleanly
+        logger.info("Graceful shutdown completed");
+        process.exit(0);
+      } catch (error) {
+        logger.error("Error during graceful shutdown:", error);
+        process.exit(1);
+      }
+    });
+
+    // Force shutdown after 30 seconds if graceful shutdown hangs
+    setTimeout(() => {
+      logger.error(
+        "Could not close connections in time, forcefully shutting down"
+      );
+      process.exit(1);
+    }, 30000); // 30 seconds timeout
+  } else {
+    // No server running, exit immediately
+    process.exit(0);
+  }
+};
+
+// Handle termination signals
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// Handle uncaught errors
+process.on("uncaughtException", (error: Error) => {
+  logger.error("Uncaught Exception:", error);
+  gracefulShutdown("UNCAUGHT_EXCEPTION");
+});
+
+process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
+  logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+  gracefulShutdown("UNHANDLED_REJECTION");
+});
 
 startServer();

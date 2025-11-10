@@ -33,9 +33,6 @@ export const aiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
-  keyGenerator: (req: Request) => {
-    return req.user?._id?.toString() || req.ip || "anonymous";
-  },
 });
 
 // General API rate limiter
@@ -56,9 +53,6 @@ export const sessionCreationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
-  keyGenerator: (req: Request) => {
-    return req.user?._id?.toString() || req.ip || "anonymous";
-  },
 });
 
 // Limiter for mood/activity logging
@@ -69,7 +63,4 @@ export const dataEntryLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
-  keyGenerator: (req: Request) => {
-    return req.user?._id?.toString() || req.ip || "anonymous";
-  },
 });

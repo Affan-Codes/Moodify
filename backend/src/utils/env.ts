@@ -95,6 +95,3 @@ export const validateEnv = (): EnvConfig => {
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
   };
 };
-
-// Export validated config
-export const env = validateEnv();
